@@ -1,6 +1,6 @@
+import os
 import numpy as np
 from scipy.optimize import curve_fit
-import os
 import matplotlib.pyplot as plt
 from scipy.optimize import root, minimize, least_squares
 import argparse
@@ -103,7 +103,7 @@ def save_kernel(trial_folder, kernel_params):
     np.savetxt(file_path, kernel_values)
     print(f"Kernel parameters saved to {file_path}")
 
-def plot_kernels(t_eval, kernel_params, trial_folder):
+def plot_kernels(t_eval, kernel_params, trial_folder, node_idx):
     """
     Plot and save the estimated kernel.
 
@@ -111,6 +111,7 @@ def plot_kernels(t_eval, kernel_params, trial_folder):
         t_eval (array-like): Time values for the x-axis.
         kernel_params (array-like or mf.struct.irrarray): Kernel parameters to evaluate and plot.
         trial_folder (str): Path to the folder where the plot will be saved.
+        node_idx (int): Index of the node for which the kernel is being plotted.
     """
     # Evaluate the kernel using the eci function
     kernel = eci(t_eval, kernel_params)
@@ -120,12 +121,12 @@ def plot_kernels(t_eval, kernel_params, trial_folder):
     plt.plot(t_eval, kernel, label='Estimated Kernel')
     plt.xlabel("Time")
     plt.ylabel("Kernel Response")
-    plt.title("Fitted Exponential Kernel (Multiple Branches)")
+    plt.title(f"Fitted Exponential Kernel (Multiple Branches) for Node {node_idx}")
     plt.legend()
     plt.grid()
 
     # Save the plot
-    plot_path = os.path.join(trial_folder, 'fitted_kernel.png')
+    plot_path = os.path.join(trial_folder, f'fitted_kernel_{node_idx}.png')
     plt.savefig(plot_path)
     plt.close()
     print(f"Kernel plot saved to {plot_path}")
@@ -257,7 +258,7 @@ def main():
         return
 
     # Process each trial folder
-    for trial_idx in range(8):
+    for trial_idx in range(0,len(next(os.walk(args.data_folder))[1])):
         trial_folder = os.path.join(trial_base_folder, f'trial_{trial_idx}')
         if not os.path.exists(trial_folder):
             continue
@@ -266,17 +267,21 @@ def main():
         t_eval, DeltaX = load_trial_data(trial_folder)
 
         # Fit the ECI model with branching
-        kernel_params = fit_eci_branching(t_eval, DeltaX[3, :], DeltaX[0, :], dt=t_eval[1] - t_eval[0],
+        num_nodes = 4
+        kernel_params = []
+        for node_idx in range(0, num_nodes):
+            kernel_params.append(fit_eci_branching(t_eval, DeltaX[node_idx, :], DeltaX[0, :], dt=t_eval[1] - t_eval[0],
                                           n_hops_min=1, n_hops_max=3, n_branches_max=2,
                                           rms_limits=[None, None], auto_stop=True, rms_tol=1e-2,
-                                          method="trf", routine="least_squares")
+                                          method="trf", routine="least_squares"))
+                
+            # Plot the data if requested
+            if args.plot_data:
+                plot_kernels(t_eval, kernel_params[-1], trial_folder, node_idx)
 
         # Save the fitted kernel parameters
-        save_kernel(trial_folder, kernel_params)
+       # save_kernel(trial_folder, kernel_params)
 
-        # Plot the data if requested
-        if args.plot_data:
-            plot_kernels(t_eval, kernel_params, trial_folder)
 
 if __name__ == "__main__":
     main()

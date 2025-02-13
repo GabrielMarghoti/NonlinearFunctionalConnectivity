@@ -245,7 +245,7 @@ def fit_eci_branching(x, y, stim, dt, n_hops_min=3, n_hops_max=5, n_branches_max
 
 def main():
     """
-    Main function to run the ODE simulation with optional plotting.
+    Main function to fit the data stored in a folder parsed with parse.add_argument(), in the command line.
     """
     parser = argparse.ArgumentParser(description="Run the ODE simulation with optional plotting.")
     parser.add_argument("--plot_data", action="store_true", help="Enable plotting of the results.")

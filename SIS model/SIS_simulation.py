@@ -64,13 +64,13 @@ if __name__ == "__main__":
     N_trials = 10
     
     # Create a directory to store the trial data
-    if not os.path.exists('trials_data'):
-        os.makedirs('trials_data')
+    if not os.path.exists('SIS model/trials_data'):
+        os.makedirs('SIS model/trials_data')
 
     # Solve trial by trial and save data
     for trial_idx in range(N_trials):
         # Create a folder for the current trial
-        trial_folder = os.path.join('trial_data', f'trial_{trial_idx}')
+        trial_folder = os.path.join('SIS model/trials_data', f'trial_{trial_idx}')
         if not os.path.exists(trial_folder):
             os.makedirs(trial_folder)
 

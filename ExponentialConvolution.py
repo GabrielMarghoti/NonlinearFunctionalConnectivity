@@ -1,11 +1,26 @@
 import numpy as np
 from scipy.optimize import root as root
 from scipy.optimize import root_scalar as root_scalar
-import pumpprobe as pp
+import ConvolutionMethods as convm
 
 class ExponentialConvolution:
-    
-    def __init__(self,gs,A=1.):
+    """
+    A class to represent and manipulate exponential convolution operations.
+    This class allows for the symbolic representation of convolutions of exponential functions,
+    enabling operations like convolution, branching, and evaluation in both time and frequency domains.
+    """
+
+    def __init__(self, gs, A=1.0):
+        """
+        Initialize an ExponentialConvolution object.
+
+        Parameters:
+        -----------
+        gs : list of float or None
+            List of gamma values for the exponentials. If None, an empty object is created.
+        A : float, optional
+            Initial amplitude of the first exponential. Default is 1.0.
+        """
         if gs is not None:
             self.n_branches = 1
             g1 = gs[0]
@@ -787,7 +802,7 @@ class ExponentialConvolution:
         a = self.eval(time)
         b = gamma*np.exp(-gamma*time)
         if np.all(b[1:]<gamma*1e-2): return -10.
-        ap = pp.convolution(a, b, time[1]-time[0], 8)
+        ap = convm.convolution(a, b, time[1]-time[0], 8)
         err = np.average(np.abs(ap-a))
         
         return err-gamma*atol

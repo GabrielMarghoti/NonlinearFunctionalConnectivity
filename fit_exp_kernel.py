@@ -1,11 +1,11 @@
 import os
 import numpy as np
-from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
-from scipy.optimize import root, minimize, least_squares
+from scipy.optimize import minimize, least_squares
 import argparse
-import pumpprobe as pp  # Custom package for specific functions
-import mistofrutta as mf  # Custom package for specific functions
+from ExponentialConvolution import ExponentialConvolution
+from utilities import irrarray
+import ConvolutionMethods as convm
 
 def eci(x, p, power_t=None):
     """
@@ -13,19 +13,19 @@ def eci(x, p, power_t=None):
 
     Args:
         x (array-like): Input time values.
-        p (array-like or mf.struct.irrarray): Parameters for the exponential convolution.
+        p (array-like or irrarray): Parameters for the exponential convolution.
         power_t (array-like, optional): Powers of t in terms like t^n exp(-gt). Defaults to None.
 
     Returns:
         array-like: The evaluated exponential convolution.
     """
-    if not isinstance(p, mf.struct.irrarray):
+    if not isinstance(p, irrarray):
         # If p is not an irrarray, handle it as a simple array
         if power_t is None:
-            ecj = pp.ExponentialConvolution(p[1:], p[0])
+            ecj = ExponentialConvolution(p[1:], p[0])
         else:
             # Handle cases where power_t is provided
-            ecj = pp.ExponentialConvolution(p[1], p[0])
+            ecj = ExponentialConvolution(p[1], p[0])
             if power_t[1] > 0:
                 for q in np.arange(power_t[1]):
                     ecj.convolve_exp(p[1])
@@ -35,7 +35,7 @@ def eci(x, p, power_t=None):
     else:
         # If p is an irrarray, handle branching logic
         if power_t is None:
-            ecj = pp.ExponentialConvolution(p(branch=0)[1:], p(branch=0)[0])
+            ecj = ExponentialConvolution(p(branch=0)[1:], p(branch=0)[0])
             for b in np.arange(len(p.first_index["branch"]) - 1)[1:]:
                 branch_par = p(branch=b)
                 ecj.branch_path(branch_par[1], branch_par[0])
@@ -46,7 +46,7 @@ def eci(x, p, power_t=None):
             p_b0 = p(branch=0)
             pt_b0 = power_t(branch=0)  # power_t must also be an irrarray
 
-            ecj = pp.ExponentialConvolution([p_b0[1]], p_b0[0])
+            ecj = ExponentialConvolution([p_b0[1]], p_b0[0])
             if pt_b0[1] > 0:
                 for q in np.arange(pt_b0[1]):
                     ecj.convolve_exp(p_b0[1])
@@ -90,12 +90,12 @@ def save_kernel(trial_folder, kernel_params):
 
     Args:
         trial_folder (str): Path to the folder where the kernel parameters will be saved.
-        kernel_params (array-like or mf.struct.irrarray): Kernel parameters to save.
+        kernel_params (array-like or irrarray): Kernel parameters to save.
     """
     file_path = os.path.join(trial_folder, 'fitted_kernel.txt')
 
     # Extract values from the irrarray object if necessary
-    if isinstance(kernel_params, mf.struct.irrarray):
+    if isinstance(kernel_params, irrarray):
         kernel_values = kernel_params[:]  # Convert irrarray to a flat numpy array
     else:
         kernel_values = kernel_params  # Assume it's already a numpy array
@@ -109,7 +109,7 @@ def plot_kernels(t_eval, kernel_params, trial_folder, node_idx):
 
     Args:
         t_eval (array-like): Time values for the x-axis.
-        kernel_params (array-like or mf.struct.irrarray): Kernel parameters to evaluate and plot.
+        kernel_params (array-like or irrarray): Kernel parameters to evaluate and plot.
         trial_folder (str): Path to the folder where the plot will be saved.
         node_idx (int): Index of the node for which the kernel is being plotted.
     """
@@ -187,7 +187,7 @@ def fit_eci_branching(x, y, stim, dt, n_hops_min=3, n_hops_max=5, n_branches_max
 
             # Combine previous and current parameters
             p0_tot_ = np.append(p0_tot_prev_, p0_cur_b_)
-            p0_tot = mf.struct.irrarray(p0_tot_, [np.append(n_in_prev, i + 1)], ["branch"])
+            p0_tot = irrarray(p0_tot_, [np.append(n_in_prev, i + 1)], ["branch"])
 
             # Set bounds for optimization
             lower_bounds = -np.inf * np.ones_like(p0_tot)
@@ -199,11 +199,11 @@ def fit_eci_branching(x, y, stim, dt, n_hops_min=3, n_hops_max=5, n_branches_max
 
             # Perform optimization
             if routine == "minimize":
-                error = lambda p, x, y: np.sum(np.power(pp.convolution(stimb, eci(x, p), dt, 8) - y, 2))
+                error = lambda p, x, y: np.sum(np.power(convm.convolution(stimb, eci(x, p), dt, 8) - y, 2))
                 res = minimize(error, p0_tot, args=(x, yb), method=method)
                 p_cur_b = res.x
             elif routine == "least_squares":
-                residuals = lambda p, x, y: pp.convolution(stimb, eci(x, p), dt, 8) - y
+                residuals = lambda p, x, y: convm.convolution(stimb, eci(x, p), dt, 8) - y
                 res = least_squares(residuals, p0_tot, args=(x, yb), method=method, bounds=(lower_bounds, upper_bounds))
                 p_cur_b = res.x
 
